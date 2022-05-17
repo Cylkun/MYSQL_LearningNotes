@@ -205,6 +205,7 @@ FROM student s
 GROUP BY majorid;
 
 -- 查询专业和张翠山一样的学生的最低分
+-- 方法一
 SELECT MIN(r.score)
 FROM student s
     INNER JOIN result r ON s.studentno = r.studentno
@@ -212,10 +213,77 @@ WHERE majorid = (
     SELECT majorid
     FROM student
     WHERE studentname = '张翠山'
-)
+);
+
+-- 方法二 ()
+SELECT MIN(score)
+FROM result
+WHERE studentno IN (
+    SELECT studentno
+    FROM student
+    WHERE majorid IN (
+        SELECT majorid
+        FROM student
+        WHERE studentname = '张翠山'
+    )
+);
 
 -- 查询大于 60 分的学生的姓名, 密码, 专业名
+-- 方法一
+SELECT s.studentname, s.loginpwd, m.majorname
+FROM student s
+    INNER JOIN major m ON s.majorid = m.majorid
+WHERE studentno IN (
+    SELECT studentno
+    FROM result
+    WHERE score > 60;
+)
+
+-- 方法二
+SELECT s.studentname, s.loginpwd, m.majorname
+FROM student s
+    INNER JOIN major m ON s.majorid = m.majorid
+    INNER JOIN result r ON s.studentno = r.studentno
+WHERE r.score > 60;
+
 -- 按邮箱位数分组, 查询每组的学生个数
+SELECT LENGTH(email), COUNT(*)
+FROM student
+GROUP BY LENGTH(email);
+
 -- 查询学生名, 专业名, 分数
+-- ! 因为 score 中有 NULL, 所以使用 LEFT 而不是 INNER
+SELECT s.studentname, m.majorname, r.score
+FROM student s
+    LEFT JOIN major m ON s.majorid = m.majorid
+    LEFT JOIN result r ON s.studentno = r.studentno;
+
 -- 查询哪个专业没有学生, 分别用左外连接和右外连接实现
+SELECT m.majorname
+FROM major m
+    LEFT JOIN student s ON m.majorid = s.majorid
+GROUP BY m.majorid
+HAVING COUNT(*) = 0;
+-- 查不到, 因为所有专业都有学生
+
+-- 方法二
+SELECT m.majorname
+FROM student s
+    RIGHT JOIN major m ON m.majorid = s.majorid
+WHERE s.studentno IS NULL;
+
 -- 查询没有成绩的学生人数
+-- ! 下面的是错误的, 因为 result 中只包含有成绩的 studentno
+SELECT COUNT(*)
+FROM student
+WHERE studentno IN (
+    SELECT studentno
+    FROM result
+    WHERE score IS NULL
+);
+
+-- * 正确方法
+SELECT COUNT(*)
+FROM student s
+    LEFT JOIN result r ON s.studentno = r.studentno
+WHERE r.score IS NULL;
