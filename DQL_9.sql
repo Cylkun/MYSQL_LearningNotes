@@ -14,5 +14,3 @@ SELECT *
 FROM employees
 WHERE email LIKE '%a%';
 
--- 
-
