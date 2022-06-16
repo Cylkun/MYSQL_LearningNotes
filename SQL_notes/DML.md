@@ -182,7 +182,8 @@ WHERE 连接条件
 -- SQL 99
 UPDATE 表1 别名
     INNER/LEFT/RIGHT JOIN 表2 别名 ON 连接条件
-SET 列 = 值, ...;
+SET 列 = 值, ...
+WHERE ...;
 ```
 
 
@@ -218,7 +219,7 @@ WHERE bo.id IS NULL;
 #### 单表删除
 
 ```sql
-DELETE FROM <table_name> WHERE 筛选条件
+DELETE FROM <table_name> [WHERE 筛选条件] [LIMIT 条目数];
 ```
 
 删除手机号以 9 结尾的女神信息
@@ -290,7 +291,7 @@ TRUNCATE TABEL boys;
 1. DELECT 可以加 WHERE, TRUNCATE 不能加
 2. TRUNCATE 效率高
 3. 要删除的表中有自增长列
-	1. 使用 DELECT 删除后再插入数据, 自增长列的值从断电开始
+	1. 使用 DELECT 删除后再插入数据, 自增长列的值从断点开始
 	2. 使用 DELECT 删除后再插入数据, 自增长列的值从 1 开始
 4. DELECT 删除有返回值, TRUNCATE 删除没有返回值 (无法返回几行受影响 AffectedRows)
 5. DELETE 删除能回滚, TRUNCATE 删除不能回滚

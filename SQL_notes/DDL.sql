@@ -255,3 +255,107 @@ INSERT INTO tab_set VALUES('a', 'd', 'c');
 INSERT INTO tab_set VALUES('a,D,c');  -- 显示为 a,c,d
 -- 'a,d,c' 不能写成 'a, d, c', 否则报错 "Data truncated for column 's1' at row 1"
 SELECT * FROM tab_set;
+
+
+-- 日期型
+CREATE TABLE tab_date(
+    t1 DATETIME,
+    t2 TIMESTAMP
+);
+DESC tab_date;
+
+INSERT INTO tab_date VALUES(NOW(), NOW());
+SELECT * FROM tab_date;
+-- 显示变量
+SHOW VARIABLES LIKE 'time_zone';
+
+-- 修改时区
+SET time_zone = '+9:00';
+-- datetime 为当前系统时间, timestamp 为指定时区时间
+INSERT INTO tab_date VALUES(NOW(), NOW());
+SELECT * FROM tab_date;
+
+
+-- 常见约束
+-- 列级约束
+CREATE TABLE major(
+    id INT PRIMARY KEY,
+    majorName VARCHAR(20)
+);
+
+CREATE TABLE stuinfo(
+    id INT PRIMARY KEY,  -- 主键
+    stuName VARCHAR(20) NOT NULL,  -- 非空
+    gender CHAR(1) CHECK(gender='男' OR gender='女'),  -- 检查, mysql 不支持
+    seat INT UNIQUE,  -- 唯一
+    age INT DEFAULT 18, -- 默认
+    majorId INT REFERENCES major(id)  -- 外键, mysql 不支持
+);
+DESC stuinfo;
+-- 查看表的索引
+SHOW INDEX FROM stuinfo;
+DROP TABLE IF EXISTS stuinfo;
+
+-- 表级约束
+CREATE TABLE stuinfo(
+    id INT,
+    stuname VARCHAR(20),
+    gender CHAR(1),
+    seat INT,
+    age INT,
+    majorid INT,
+
+    PRIMARY KEY(id), -- 主键, 显示 `PRIMARY` 不支持改名
+    UNIQUE(seat), -- 唯一键
+    CHECK(gender='男' OR gender='女'),  -- 检查
+    FOREIGN KEY(majorId) REFERENCES major(id)  -- 外键
+    -- * `NOT NULL` 和 `DEFAULT` 不支持
+);
+SHOW INDEX FROM stuinfo;
+DROP TABLE IF EXISTS stuinfo;
+
+-- 为约束列起别名
+CREATE TABLE stuinfo(
+    id INT,
+    stuname VARCHAR(20),
+    gender CHAR(1),
+    seat INT,
+    age INT,
+    majorid INT,
+
+    CONSTRAINT pk PRIMARY KEY(id), -- 主键, 显示 `PRIMARY` 不支持改名
+    CONSTRAINT uq UNIQUE(seat), -- 唯一键
+    CONSTRAINT ck CHECK(gender='男' OR gender='女'),  -- 检查
+    CONSTRAINT fk_stuinfo_major FOREIGN KEY(majorId) REFERENCES major(id)  -- 外键
+    -- * `NOT NULL` 和 `DEFAULT` 不支持
+);
+SHOW INDEX FROM stuinfo;
+DROP TABLE IF EXISTS stuinfo;
+
+-- 通用写法
+CREATE TABLE IF NOT EXISTS stuinfo(
+    id INT PRIMARY KEY,  -- 主键
+    stuname VARCHAR(20) NOT NULL,  -- 非空
+    gender CHAR(1),
+    age INT DEFAULT 18,  -- 默认值
+    seat INT UNIQUE,  -- 唯一
+    majorid INT,
+    -- 外键命名方式 fk_<从表(当前表)>_<主表(相关表)>
+    CONSTRAINT fk_stuinfo_major FOREIGN KEY(majorid) REFERENCES major(id)  -- 外键
+);
+SHOW INDEX FROM stuinfo;
+DROP TABLE IF EXISTS stuinfo;
+
+-- 组合
+CREATE TABLE IF NOT EXISTS stuinfo(
+    id INT,
+    stuname VARCHAR(20),
+    gender CHAR(1),
+    age INT DEFAULT 18,  -- 默认值
+    seat INT UNIQUE,  -- 唯一
+    majorid INT,
+
+    PRIMARY KEY(id, stuname),  -- 主键的组合
+    UNIQUE(seat, majorid)  -- 唯一的组合
+);
+
