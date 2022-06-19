@@ -358,4 +358,182 @@ CREATE TABLE IF NOT EXISTS stuinfo(
     PRIMARY KEY(id, stuname),  -- 主键的组合
     UNIQUE(seat, majorid)  -- 唯一的组合
 );
+SHOW INDEX FROM stuinfo;
+DROP TABLE IF EXISTS stuinfo;
+
+-- 添加多个约束
+CREATE TABLE IF NOT EXISTS stuinfo(
+    id INT PRIMARY KEY,
+    stuname VARCHAR(20),
+    age INT NOT NULL DEFAULT 18,  -- 直接加, 没有顺序要求
+    seat INT UNIQUE,
+    majorid INT
+);
+SHOW INDEX FROM stuinfo;
+DROP TABLE IF EXISTS stuinfo;
+
+-- 修改表时添加约束
+CREATE TABLE IF NOT EXISTS stuinfo(
+    id INT,
+    stuname VARCHAR(20),
+    age INT,
+    seat INT,
+    majorid INT
+);
+DROP TABLE IF EXISTS stuinfo;
+
+-- 添加非空约束
+ALTER TABLE stuinfo MODIFY COLUMN stuname VARCHAR(20) NOT NULL;
+DESC stuinfo;
+
+-- 添加默认约束
+ALTER TABLE stuinfo MODIFY COLUMN age INT DEFAULT 18;
+DESC stuinfo;
+
+-- 添加主键
+ALTER TABLE stuinfo MODIFY COLUMN id INT PRIMARY KEY;  -- 添加列级约束
+DESC stuinfo;
+ALTER TABLE stuinfo ADD PRIMARY KEY(id);  -- 添加表级约束
+
+-- 添加唯一
+ALTER TABLE stuinfo MODIFY COLUMN seat INT UNIQUE;
+DESC stuinfo;
+ALTER TABLE stuinfo ADD UNIQUE(seat);
+
+-- 添加外键
+ALTER TABLE stuinfo ADD FOREIGN KEY(majorid) REFERENCES major(id);
+ALTER TABLE stuinfo ADD CONSTRAINT fk_stuinfo_major FOREIGN KEY(majorid) REFERENCES major(id);
+
+-- 修改表时删除约束
+-- 删除非空约束
+-- 方法一
+ALTER TABLE stuinfo MODIFY COLUMN stuname VARCHAR(20) NULL;
+-- 方法二
+ALTER TABLE stuinfo MODIFY COLUMN stuname VARCHAR(20);
+DESC stuinfo;
+
+-- 删除默认约束
+ALTER TABLE stuinfo MODIFY COLUMN age INT;
+DESC stuinfo;
+
+-- 删除主键
+ALTER TABLE stuinfo DROP PRIMARY KEY;
+-- ! 无法删除
+-- ALTER TABLE stuinfo MODIFY COLUMN id INT;
+DESC stuinfo;
+
+-- 删除唯一
+ALTER TABLE stuinfo DROP INDEX seat;
+-- ! 无法删掉 `UNIQUE`
+-- ALTER TABLE stuinfo MODIFY COLUMN seat INT;
+DESC stuinfo;
+SHOW INDEX FROM stuinfo;  -- 也可以查到
+
+-- 删除外键
+-- mysql 支持分步删除: 1. 删除外键; 2. 删除索引
+ALTER TABLE stuinfo DROP FOREIGN KEY fk_stuinfo_major;
+ALTER TABLE stuinfo DROP INDEX fk_stuinfo_major;
+SHOW INDEX FROM stuinfo;
+
+
+-- 练习
+-- 向表 emp2 的 id 列中添加 PRIMARY KEY 约束 (my_emp_id_pk)
+ALTER TABLE emp2 ADD CONSTRAINT my_emp_id_pk PRIMARY KEY(id);
+ALTER TABLE emp2 MODIFY COLUMN id INT PRIMARY;
+
+-- 向表 dept2 的 id 列中添加 PRIMARY KEY 约束 (my_dept_id_pk)
+ALTER TABLE dept2 ADD CONSTRAINT my_dept_id_pk PRIMARY KEY(id);
+ALTER TABLE dept2 MODIFY COLUMN id INT PRIMARY;
+
+-- 向表 emp2 中添加列 dept_id, 并在其中定义 FOREIGN KEY 约束, 与之相关联的列是 dept2 表中的 id 列
+ALTER TABLE emp2 ADD COLUMN dept_id INT;
+ALTER TABLE emp2 ADD CONSTRAINT fk_emp2_dept2 FOREIGN KEY(dept_id) REFERENCES dept2(id);
+-- ! 有错
+ALTER TABLE emp2 ADD COLUMN dept_id INT REFERENCES dept2(id);
+
+-- 标识列
+CREATE TABLE tab_identity(
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(20),
+);
+DROP TABLE IF EXISTS tab_identity;
+TRUNCATE TABLE tab_identity;
+DELETE FROM tab_identity;
+
+-- 重复插入
+INSERT INTO tab_identity VALUES(NULL, 'john');
+INSERT INTO tab_identity(name) VALUES('lucy');
+SELECT * FROM tab_identity;
+
+-- 修改起始值和步长
+SHOW VARIABLES LIKE '%auto_increment%';
+-- mysql 不支持设置起始值, 支持设置步长
+SET auto_increment_increment=3;
+SET auto_increment_increment=1;
+
+-- 更改起始值
+INSERT INTO tab_identity VALUES(10, 'john');
+-- * 之后的插入从 11 开始
+
+
+-- 标识列是否必须是主键
+CREATE TABLE tab_identity(
+    id INT PRIMARY KEY,
+    name VARCHAR(20),
+    seat INT AUTO_INCREMENT
+);
+-- ! Incorrect table definition; there can be only one auto column and it must be defined as a key
+
+CREATE TABLE tab_identity(
+    id INT PRIMARY KEY,
+    name VARCHAR(20),
+    seat INT UNIQUE AUTO_INCREMENT
+);
+DROP TABLE IF EXISTS tab_identity;
+
+
+
+-- 标识列是否唯一
+CREATE TABLE tab_identity(
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(20),
+    seat INT UNIQUE AUTO_INCREMENT
+);
+-- ! Incorrect table definition; there can be only one auto column and it must be defined as a key
+DROP TABLE IF EXISTS tab_identity;
+
+-- 自增长列是否只能是 INT
+CREATE TABLE tab_identity(
+    id INT PRIMARY KEY,
+    name VARCHAR(20) UNIQUE AUTO_INCREMENT
+);
+-- ! Incorrect column specifier for column 'name'
+
+CREATE TABLE tab_identity(
+    id FLOAT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(20)
+);
+INSERT INTO tab_identity(name) VALUES('john');
+SELECT * FROM tab_identity;
+DROP TABLE IF EXISTS tab_identity;
+
+
+-- 修改表时设置标识列
+CREATE TABLE tab_identity(
+    id INT PRIMARY KEY,
+    name VARCHAR(20)
+);
+ALTER TABLE tab_identity MODIFY COLUMN id INT PRIMARY KEY AUTO_INCREMENT;
+
+-- 修改表时删除标识列
+ALTER TABLE tab_identity MODIFY COLUMN id INT PRIMARY KEY;
+-- ! Multiple primary key defined
+ALTER TABLE tab_identity MODIFY COLUMN id INT;
+-- * 虽然没有标识 `PRIMARY KEY`, 但仍然是主键
+DESC tab_identity;
+
+ALTER TABLE tab_identity DROP PRIMARY KEY;
+
+SHOW INDEX FROM tab_identity;
+
 

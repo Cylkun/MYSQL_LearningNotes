@@ -484,5 +484,455 @@ M: 最大字符数
 `timestamp` 和实际时区有关, 更能反应实际的日期, `datetime` 只能反映插入的当地时区
 
 
-## 约束
+
+## 常见约束
+
+含义: 用于限制表中的数据, 了保证表中的数据的一致性 (准确性和可靠性)
+
+```sql
+CREATE TABLE 表名(
+    字段名 字段类型 列级约束,
+    字段名 字段类型,
+    ...
+    表级约束
+);
+```
+
+六大约束
+
+- `NOTNULL`: 非空, 用于保证该字段的值不为空
+- `DEFAULT`: 默认, 用于保证该字段有默认值
+- `PRIMARY KEY`: 主键, 用于保证该字段的值具有唯一性, 并且非空
+- `UNIQUE`: 唯一, 用于保证该字段的值具有唯一性, 可以为空
+- `CHECK`: 检查 (MySQL 不支持)
+- `FOREIGN KEY`: 外键, 限制两个表的关系, 用于保证该字段的值必须来自于主表的关联列的值. 在从表中添加外键约束, 用于引用主表中某些列的值. 
+
+添加表的时机:
+
+- 创建表时
+- 修改表时 (在添加数据之前)
+
+约束的添加分类:
+
+- 列级约束: 六大约束语法上都支持, 但外键约束没有效果
+- 表级约束: 除了非空和默认, 其他的都支持
+
+
+
+### 列级约束
+
+语法: 直接在字段名和类型后面追加 `约束类型` 即可, 只支持 `DEFAULT`, `NOT NULL`, `PRIMARY KEY`, `UNIQUE`
+
+
+```sql
+CREATE TABLE major(
+    id INT PRIMARY KEY,
+    majorName VARCHAR(20)
+);
+
+CREATE TABLE stuinfo(
+    id INT PRIMARY KEY,  -- 主键
+    stuName VARCHAR(20) NOT NULL,  -- 非空
+    gender CHAR(1) CHECK(gender='男' OR gender='女'),  -- 检查, mysql 不支持
+    seat INT UNIQUE,  -- 唯一
+    age INT DEFAULT 18, -- 默认
+    majorId INT REFERENCES major(id)  -- 外键, mysql 不支持
+);
+DESC stuinfo;
+-- 查看表的索引
+SHOW INDEX FROM stuinfo;
+DROP TABLE IF EXISTS stuinfo;
+```
+
+
+### 表级约束
+
+语法
+
+```sql
+[CONSTRAINT 约束名 ]约束类型(字段名)
+```
+
+```sql
+-- 表级约束
+CREATE TABLE stuinfo(
+    id INT,
+    stuname VARCHAR(20),
+    gender CHAR(1),
+    seat INT,
+    age INT,
+    majorid INT,
+
+    PRIMARY KEY(id), -- 主键, 显示 `PRIMARY` 不支持改名
+    UNIQUE(seat), -- 唯一键
+    CHECK(gender='男' OR gender='女'),  -- 检查
+    FOREIGN KEY(majorId) REFERENCES major(id)  -- 外键
+    -- * `NOT NULL` 和 `DEFAULT` 不支持
+);
+SHOW INDEX FROM stuinfo;
+DROP TABLE IF EXISTS stuinfo;
+```
+
+### 为约束列起别名
+
+```sql
+-- 为约束列起别名
+CREATE TABLE stuinfo(
+    id INT,
+    stuname VARCHAR(20),
+    gender CHAR(1),
+    seat INT,
+    age INT,
+    majorid INT,
+
+    CONSTRAINT pk PRIMARY KEY(id), -- 主键, 显示 `PRIMARY` 不支持改名
+    CONSTRAINT uq UNIQUE(seat), -- 唯一键
+    CONSTRAINT ck CHECK(gender='男' OR gender='女'),  -- 检查
+    CONSTRAINT fk_stuinfo_major FOREIGN KEY(majorId) REFERENCES major(id)  -- 外键
+    -- * `NOT NULL` 和 `DEFAULT` 不支持
+);
+SHOW INDEX FROM stuinfo;
+DROP TABLE IF EXISTS stuinfo;
+```
+
+### 通用写法
+
+```sql
+-- 通用写法
+CREATE TABLE IF NOT EXISTS stuinfo(
+    id INT PRIMARY KEY,  -- 主键
+    stuname VARCHAR(20) NOT NULL,  -- 非空
+    gender CHAR(1),
+    age INT DEFAULT 18,  -- 默认值
+    seat INT UNIQUE,  -- 唯一
+    majorid INT,
+    -- 外键命名方式 fk_<从表(当前表)>_<主表(相关表)>
+    CONSTRAINT fk_stuinfo_major FOREIGN KEY(majorid) REFERENCES major(id)  -- 外键
+);
+```
+
+### 组合
+
+```sql
+-- 组合
+CREATE TABLE IF NOT EXISTS stuinfo(
+    id INT,
+    stuname VARCHAR(20),
+    gender CHAR(1),
+    age INT DEFAULT 18,  -- 默认值
+    seat INT UNIQUE,  -- 唯一
+    majorid INT,
+
+    PRIMARY KEY(id, stuname),  -- 主键的组合
+    UNIQUE(seat, majorid)  -- 唯一的组合
+);
+SHOW INDEX FROM stuinfo;
+DROP TABLE IF EXISTS stuinfo;
+```
+
+### 添加多个约束
+
+```sql
+-- 添加多个约束
+CREATE TABLE IF NOT EXISTS stuinfo(
+    id INT PRIMARY KEY,
+    stuname VARCHAR(20),
+    age INT NOT NULL DEFAULT 18,  -- 直接加, 没有顺序要求
+    seat INT UNIQUE,
+    majorid INT
+);
+SHOW INDEX FROM stuinfo;
+DROP TABLE IF EXISTS stuinfo;
+```
+
+
+
+
+### 主键, 唯一, 外键对比
+
+|                    | 主键       | 唯一                          |
+| ------------------ | ---------- | ----------------------------- |
+| 保证唯一性         | ✔️          | ✔️                             |
+| 是否允许为空       | ❌          | ✔️ (不允许同时出现两个 `NULL`) |
+| 一个表中可以有多个 | ❌ (唯一)   | ✔️                             |
+| 是否允许组合       | ✔️ (不推荐) | ✔️(不推荐)                     |
+
+外键
+
+1. 要求在从表中设置外键关系
+2. 从表的外键列的类型和主表的关联列的类型要求一致或兼容, 名称无要求
+3. 主表的关联列必须是一个 key (一般是主键或唯一)
+4. 插入数据时, 先插入主表, 再插入从表
+5. 删除数据时, 先删除从表, 再删除主表
+
+
+### 修改表时添加约束
+
+语法
+
+```sql
+-- 添加列级约束
+ALTER TABLE 表名 MODIFY COLUMN 字段名 字段类型 新约束;
+
+-- 添加表级约束
+ALTER TABLE 表名 ADD[CONSTRAINT 约束名 ]约束类型(字段名);
+
+
+
+-- 添加列级约束
+ALTER TABLE <table_name> MODIFY COLUMN <column_name> <data_type> <constraint>;
+
+-- 添加表级约束
+ALTER TABLE <table_name> ADD[CONSTRAINT <constrain_name> ]<constraint>(<column_name>);
+```
+
+
+```sql
+-- 修改表时添加约束
+CREATE TABLE IF NOT EXISTS stuinfo(
+    id INT,
+    stuname VARCHAR(20),
+    age INT,
+    seat INT,
+    majorid INT
+);
+DROP TABLE IF EXISTS stuinfo;
+```
+
+
+
+```sql
+-- 添加非空约束
+ALTER TABLE stuinfo MODIFY COLUMN stuname VARCHAR(20) NOT NULL;
+DESC stuinfo;
+ALTER TABLE stuinfo MODIFY COLUMN stuname VARCHAR(20);
+DESC stuinfo;
+```
+
+
+
+```sql
+-- 添加默认约束
+ALTER TABLE stuinfo MODIFY COLUMN age INT DEFAULT 18;
+```
+
+
+
+```sql
+-- 添加主键
+ALTER TABLE stuinfo MODIFY COLUMN id INT PRIMARY KEY;  -- 添加列级约束
+ALTER TABLE stuinfo ADD PRIMARY KEY(id);  -- 添加表级约束
+```
+
+
+
+```sql
+-- 添加唯一
+ALTER TABLE stuinfo MODIFY COLUMN seat INT UNIQUE;
+ALTER TABLE stuinfo ADD UNIQUE(seat);
+```
+
+
+
+```sql
+-- 添加外键
+ALTER TABLE stuinfo ADD FOREIGN KEY(majorid) REFERENCES major(id);
+ALTER TABLE stuinfo ADD CONSTRAINT fk_stuinfo_major FOREIGN KEY(majorid) REFERENCES major(id);
+```
+
+
+### 修改表时删除约束
+
+```sql
+-- 删除非空约束
+-- 方法一
+ALTER TABLE stuinfo MODIFY COLUMN stuname VARCHAR(20) NULL;
+-- 方法二
+ALTER TABLE stuinfo MODIFY COLUMN stuname VARCHAR(20);
+DESC stuinfo;
+```
+
+
+
+```sql
+-- 删除默认约束
+ALTER TABLE stuinfo MODIFY COLUMN age INT;
+DESC stuinfo;
+```
+
+
+
+```sql
+-- 删除主键
+ALTER TABLE stuinfo DROP PRIMARY KEY;
+-- ! 无法删除
+-- ALTER TABLE stuinfo MODIFY COLUMN id INT;
+DESC stuinfo;
+```
+
+
+
+```sql
+-- 删除唯一
+ALTER TABLE stuinfo DROP INDEX seat;
+-- ! 无法删掉 `UNIQUE`
+-- ALTER TABLE stuinfo MODIFY COLUMN seat INT;
+DESC stuinfo;
+SHOW INDEX FROM stuinfo;  -- 也可以查到
+```
+
+
+
+```sql
+-- 删除外键
+-- mysql 支持分步删除: 1. 删除外键; 2. 删除索引
+ALTER TABLE stuinfo DROP FOREIGN KEY fk_stuinfo_major;
+ALTER TABLE stuinfo DROP INDEX fk_stuinfo_major;
+SHOW INDEX FROM stuinfo;
+```
+
+### 练习
+
+向表 emp2 的 id 列中添加 PRIMARY KEY 约束 (my_emp_id_pk)
+
+```sql
+-- 向表 emp2 的 id 列中添加 PRIMARY KEY 约束 (my_emp_id_pk)
+ALTER TABLE emp2 ADD CONSTRAINT my_emp_id_pk PRIMARY KEY(id);
+ALTER TABLE emp2 MODIFY COLUMN id INT PRIMARY;
+```
+
+向表 dept2 的 id 列中添加 PRIMARY KEY 约束 (my_dept_id_pk)
+
+```sql
+-- 向表 dept2 的 id 列中添加 PRIMARY KEY 约束 (my_dept_id_pk)
+ALTER TABLE dept2 ADD CONSTRAINT my_dept_id_pk PRIMARY KEY(id);
+ALTER TABLE dept2 MODIFY COLUMN id INT PRIMARY;
+```
+
+
+
+向表 emp2 中添加列 dept_id, 并在其中定义 FOREIGN KEY 约束, 与之相关联的列是 dept2 表中的 id 列
+
+```sql
+-- 向表 emp2 中添加列 dept_id, 并在其中定义 FOREIGN KEY 约束, 与之相关联的列是 dept2 表中的 id 列
+ALTER TABLE emp2 ADD COLUMN dept_id INT;
+ALTER TABLE emp2 ADD CONSTRAINT fk_emp2_dept2 FOREIGN KEY(dept_id) REFERENCES dept2(id);
+-- ! 有错
+ALTER TABLE emp2 ADD COLUMN dept_id INT REFERENCES dept2(id);
+```
+
+
+
+|          | 位置         | 支持的约束类型             | 是否可以起约束名    |
+| -------- | ------------ | -------------------------- | ------------------- |
+| 列级约束 | 列的后面     | 语法都支持, 但外键没有效果 | 不可以              |
+| 表级约束 | 所有列的下面 | 默认和非空不支持, 其他支持 | 可以 (主键没有效果) |
+
+
+
+## 标识列/自增长列
+
+标识列: 可以不用手动插入值, 系统提供默认的序列子
+
+```sql
+-- 标识列
+CREATE TABLE tab_identity(
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(20)
+);
+DROP TABLE IF EXISTS tab_identity;
+
+-- 重复插入
+INSERT INTO tab_identity VALUES(NULL, 'john');
+INSERT INTO tab_identity(name) VALUES('lucy');
+SELECT * FROM tab_identity;
+```
+
+修改起始值和步长
+
+```sql
+-- 修改起始值和步长
+SHOW VARIABLES LIKE '%auto_increment%';
+-- mysql 不支持设置起始值, 支持设置步长
+SET auto_increment_increment=3;
+SET auto_increment_increment=1;
+
+-- 更改起始值
+INSERT INTO tab_identity VALUES(10, 'john');
+-- * 之后的插入从 11 开始
+```
+
+标识列是否必须是主键
+
+```sql
+-- 标识列是否必须是主键
+CREATE TABLE tab_identity(
+    id INT PRIMARY KEY,
+    name VARCHAR(20),
+    seat INT AUTO_INCREMENT
+);
+-- ! Incorrect table definition; there can be only one auto column and it must be defined as a key
+
+CREATE TABLE tab_identity(
+    id INT PRIMARY KEY,
+    name VARCHAR(20),
+    seat INT UNIQUE AUTO_INCREMENT
+);
+DROP TABLE IF EXISTS tab_identity;
+```
+
+标识列是否唯一
+
+```sql
+-- 标识列是否唯一
+CREATE TABLE tab_identity(
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(20),
+    seat INT UNIQUE AUTO_INCREMENT
+);
+-- ! Incorrect table definition; there can be only one auto column and it must be defined as a key
+DROP TABLE IF EXISTS tab_identity;
+```
+
+自增长列是否只能是 INT
+
+```sql
+-- 自增长列是否只能是 INT
+CREATE TABLE tab_identity(
+    id INT PRIMARY KEY,
+    name VARCHAR(20) UNIQUE AUTO_INCREMENT
+);
+-- ! Incorrect column specifier for column 'name'
+
+CREATE TABLE tab_identity(
+    id FLOAT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(20)
+);
+INSERT INTO tab_identity(name) VALUES('john');
+SELECT * FROM tab_identity;
+DROP TABLE IF EXISTS tab_identity;
+```
+
+
+
+特点:
+
+1. 标识列必须是 `key`, 但不一定是主键, 可以是其他键
+2. 一个表中只能有一个标识列
+3. 标识列的类型只能是数值型
+4. 标识列可以设置步长, 也可以通过手动插入值来设置起始值
+
+
+
+修改表时设置标识列
+
+```sql
+-- 修改表时设置标识列
+CREATE TABLE tab_identity(
+    id INT PRIMARY KEY,
+    name VARCHAR(20)
+);
+ALTER TABLE tab_identity MODIFY COLUMN id INT PRIMARY KEY AUTO_INCREMENT;
+```
+
 
