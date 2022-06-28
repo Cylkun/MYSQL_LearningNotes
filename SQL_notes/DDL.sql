@@ -365,6 +365,7 @@ DROP TABLE IF EXISTS stuinfo;
 CREATE TABLE IF NOT EXISTS stuinfo(
     id INT PRIMARY KEY,
     stuname VARCHAR(20),
+    gender CHAR(1),
     age INT NOT NULL DEFAULT 18,  -- 直接加, 没有顺序要求
     seat INT UNIQUE,
     majorid INT
@@ -376,6 +377,7 @@ DROP TABLE IF EXISTS stuinfo;
 CREATE TABLE IF NOT EXISTS stuinfo(
     id INT,
     stuname VARCHAR(20),
+    gender CHAR(1),
     age INT,
     seat INT,
     majorid INT
@@ -436,20 +438,46 @@ ALTER TABLE stuinfo DROP INDEX fk_stuinfo_major;
 SHOW INDEX FROM stuinfo;
 
 
+-- 外键专题
+INSERT INTO major
+VALUES(1, 'java'), (2, 'h5'), (3, '大数据');
+INSERT INTO stuinfo
+SELECT 1, 'john1', '女', NULL, NULL, 1 UNION ALL
+SELECT 2, 'john2', '女', NULL, NULL, 1 UNION ALL
+SELECT 3, 'john3', '女', NULL, NULL, 2 UNION ALL
+SELECT 4, 'john4', '女', NULL, NULL, 2 UNION ALL
+SELECT 5, 'john5', '女', NULL, NULL, 1 UNION ALL
+SELECT 6, 'john6', '女', NULL, NULL, 3 UNION ALL
+SELECT 7, 'john7', '女', NULL, NULL, 3 UNION ALL
+SELECT 8, 'john8', '女', NULL, NULL, 1;
+
+-- 删除含有外键的主表数据
+-- 级联删除: 删除主表数据的同时直接删除从表中对应行
+ALTER TABLE stuinfo ADD CONSTRAINT fk_stu_major FOREIGN KEY(majorid) REFERENCES major(id) ON DELETE CASCADE;
+DELETE FROM major WHERE id=3;
+
+-- 级联置空: 删除主表数据的同时修改从表中对应行的值为空
+ALTER TABLE stuinfo ADD CONSTRAINT fk_stu_major FOREIGN KEY(majorid) REFERENCES major(id) ON DELETE SET NULL;
+DELETE FROM major WHERE id=3;
+
+
+
+
 -- 练习
 -- 向表 emp2 的 id 列中添加 PRIMARY KEY 约束 (my_emp_id_pk)
 ALTER TABLE emp2 ADD CONSTRAINT my_emp_id_pk PRIMARY KEY(id);
-ALTER TABLE emp2 MODIFY COLUMN id INT PRIMARY;
+ALTER TABLE emp2 MODIFY COLUMN id INT PRIMARY KEY;
 
 -- 向表 dept2 的 id 列中添加 PRIMARY KEY 约束 (my_dept_id_pk)
 ALTER TABLE dept2 ADD CONSTRAINT my_dept_id_pk PRIMARY KEY(id);
-ALTER TABLE dept2 MODIFY COLUMN id INT PRIMARY;
+ALTER TABLE dept2 MODIFY COLUMN id INT PRIMARY KEY;
 
 -- 向表 emp2 中添加列 dept_id, 并在其中定义 FOREIGN KEY 约束, 与之相关联的列是 dept2 表中的 id 列
 ALTER TABLE emp2 ADD COLUMN dept_id INT;
 ALTER TABLE emp2 ADD CONSTRAINT fk_emp2_dept2 FOREIGN KEY(dept_id) REFERENCES dept2(id);
 -- ! 有错
-ALTER TABLE emp2 ADD COLUMN dept_id INT REFERENCES dept2(id);
+-- ALTER TABLE emp2 ADD COLUMN dept_id INT REFERENCES dept2(id);
+
 
 -- 标识列
 CREATE TABLE tab_identity(

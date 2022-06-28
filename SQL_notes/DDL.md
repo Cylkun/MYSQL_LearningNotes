@@ -637,6 +637,7 @@ DROP TABLE IF EXISTS stuinfo;
 CREATE TABLE IF NOT EXISTS stuinfo(
     id INT PRIMARY KEY,
     stuname VARCHAR(20),
+    gender CHAR(1),
     age INT NOT NULL DEFAULT 18,  -- 直接加, 没有顺序要求
     seat INT UNIQUE,
     majorid INT
@@ -656,6 +657,15 @@ DROP TABLE IF EXISTS stuinfo;
 | 是否允许为空       | ❌          | ✔️ (不允许同时出现两个 `NULL`) |
 | 一个表中可以有多个 | ❌ (唯一)   | ✔️                             |
 | 是否允许组合       | ✔️ (不推荐) | ✔️(不推荐)                     |
+
+主键和唯一
+
+1. 区别
+	1. 一个表至多有一个主键, 但可以有多个唯一
+	2. 主键不允许为空, 唯一键可以为空
+2. 相同点
+	1. 都具有唯一性
+	2. 都支持组合键, 但不推荐
 
 外键
 
@@ -692,6 +702,7 @@ ALTER TABLE <table_name> ADD[CONSTRAINT <constrain_name> ]<constraint>(<column_n
 CREATE TABLE IF NOT EXISTS stuinfo(
     id INT,
     stuname VARCHAR(20),
+    gender CHAR(1),
     age INT,
     seat INT,
     majorid INT
@@ -790,6 +801,41 @@ ALTER TABLE stuinfo DROP FOREIGN KEY fk_stuinfo_major;
 ALTER TABLE stuinfo DROP INDEX fk_stuinfo_major;
 SHOW INDEX FROM stuinfo;
 ```
+
+### 删除含有外键的主表数据
+
+```sql
+-- 插入数据
+INSERT INTO major
+VALUES(1, 'java'), (2, 'h5'), (3, '大数据');
+INSERT INTO stuinfo
+SELECT 1, 'john1', '女', NULL, NULL, 1 UNION ALL
+SELECT 2, 'john2', '女', NULL, NULL, 1 UNION ALL
+SELECT 3, 'john3', '女', NULL, NULL, 2 UNION ALL
+SELECT 4, 'john4', '女', NULL, NULL, 2 UNION ALL
+SELECT 5, 'john5', '女', NULL, NULL, 1 UNION ALL
+SELECT 6, 'john6', '女', NULL, NULL, 3 UNION ALL
+SELECT 7, 'john7', '女', NULL, NULL, 3 UNION ALL
+SELECT 8, 'john8', '女', NULL, NULL, 1;
+```
+
+级联删除: 删除主表数据的同时直接删除从表中对应行
+
+```sql
+-- 级联删除: 删除主表数据的同时直接删除从表中对应行
+ALTER TABLE stuinfo ADD CONSTRAINT fk_stu_major FOREIGN KEY(majorid) REFERENCES major(id) ON DELETE CASCADE;
+DELETE FROM major WHERE id=3;
+```
+
+级联置空: 删除主表数据的同时修改从表中对应行的值为空
+
+```sql
+-- 级联置空: 删除主表数据的同时修改从表中对应行的值为空
+ALTER TABLE stuinfo ADD CONSTRAINT fk_stu_major FOREIGN KEY(majorid) REFERENCES major(id) ON DELETE SET NULL;
+DELETE FROM major WHERE id=3;
+```
+
+
 
 ### 练习
 
