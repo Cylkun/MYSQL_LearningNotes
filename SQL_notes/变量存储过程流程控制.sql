@@ -91,10 +91,10 @@ CREATE PROCEDURE myp4(
 )
 
 BEGIN
-	SELECT bo.boyname INTO boyname
-	FROM boys bo
-	    RIGHT JOIN beauty b ON b.boyfriend_id = bo.id
-	WHERE b.name = beautyName;
+    SELECT bo.boyname INTO boyname
+    FROM boys bo
+        RIGHT JOIN beauty b ON b.boyfriend_id = bo.id
+    WHERE b.name = beautyName;
 END $
 
 -- SET @bName $-- 可以不写
@@ -232,9 +232,184 @@ CALL test_pro6(3, 5) $
 -- | 18 | 张飞   | 女   | NULL                | 18966668888 | NULL         |            2 |
 -- +----+--------+------+---------------------+-------------+--------------+--------------+
 -- 5 rows in set (0.00 sec)
-/*
-```
 
 
-```sql
-*/
+-- 函数
+-- 无参有返回
+-- 返回公司员工的个数
+
+-- 运行前先执行 `set global log_bin_trust_function_creators=1;`, 否则会报错
+-- ! ERROR 1418 (HY000): This function has none of DETERMINISTIC, NO SQL, or READS SQL DATA in its declaration and binary logging is enabled (you *might* want to use the less safe log_bin_trust_function_creators variable)
+SET GLOBAL log_bin_trust_function_creators = 1;
+-- 创建时用 `RETURNS`, 只声明类型, 不写具体变量
+CREATE FUNCTION myf1() RETURNS INT
+BEGIN
+    -- 定义变量
+    DECLARE c INT DEFAULT 0;
+    -- 赋值
+    SELECT COUNT(*) INTO c
+    FROM employees;
+    -- 返回
+    RETURN c;  -- 返回时用 `RETURN`
+END $
+
+SELECT myf1() $
+
+
+-- 有参有返回
+-- 根据员工名返回它的工资
+CREATE FUNCTION myf2(empName VARCHAR(20)) RETURNS DOUBLE
+BEGIN
+    -- 定义用户变量
+    SET @sal = 0;
+    SELECT salary INTO @sal
+    FROM employees
+    WHERE last_name = empName;
+    RETURN @sal;
+END $
+
+-- 使用前不需要 `CALL`
+-- 有重名会报错
+-- ! Result consisted of more than one row
+-- SELECT myf2('k_ing') $
+SELECT myf2('Kochhar') $
+
+
+-- 根据部门名, 返回该部门的平均工资
+CREATE FUNCTION myf3(dname VARCHAR(20)) RETURNS DOUBLE
+BEGIN
+    DECLARE avg_salary DOUBLE;
+    SELECT AVG(e.salary) INTO avg_salary
+    FROM employees e
+    WHERE e.department_id = (
+        SELECT d.department_id
+        FROM departments d
+        WHERE d.department_name = dname -- 'Adm'
+    );
+    RETURN avg_salary;
+END $
+
+SELECT myf3('Adm');
+
+-- 
+SHOW CREATE FUNCTION myf3;
+
+-- 删除函数
+DROP FUNCTION myf3;
+
+-- 练习
+-- 创建函数, 实现传入两个 float, 返回二者之和
+CREATE FUNCTION myf4(f1 FLOAT, f2 FLOAT) RETURNS FLOAT
+BEGIN
+    DECLARE f3 FLOAT;
+    SELECT f1 + f2 INTO f3;  -- SET f3 = f1 + f2;
+    RETURN f3;
+END $
+
+SELECT myf4(1, 2);
+
+
+-- 流程控制结构
+-- CASE
+-- 创建存储过程, 根据传入成绩显示等级, 如果成绩 90-100 返回 A, 如果成绩 80-90 返回 B, 如果成绩 60-80 返回 C, 否则返回 D
+CREATE PROCEDURE test_case(IN score INT)
+BEGIN
+    CASE
+    -- WHEN score >= 90 AND score <= 100 THEN SELECT 'A';
+    WHEN score BETWEEN 90 AND 100 THEN SELECT 'A';
+    WHEN score >= 80 THEN SELECT 'B';
+    WHEN score >= 60 THEN SELECT 'C';
+    ELSE SELECT 'D';
+    END CASE;  -- ! 不要忘记
+END $
+
+CALL test_case(95) $
+CALL test_case(83) $
+
+-- IF 结构 (不是 IF 函数)
+-- 创建函数, 实现传入成绩, 如果成绩 >90, 返回 A, 如果成绩 >80,返回 B, 如果成绩 >60, 返回 C, 否则返回 D
+CREATE FUNCTION test_if(score FLOAT) RETURNS CHAR
+BEGIN
+    DECLARE ch CHAR DEFAULT 'A';
+    IF score > 90 THEN SET ch = 'A';
+    ELSEIF score > 80 THEN SET ch = 'B';
+    ELSEIF score > 60 THEN SET ch = 'C';
+    ELSE SET ch = 'D';
+    END IF;
+    RETURN ch;
+END $
+
+SELECT test_if(87) $
+
+-- 循环控制
+-- while
+CREATE PROCEDURE pro_while1(IN insertCount INT)
+BEGIN
+    DECLARE i INT DEFAULT 1;
+    WHILE i <= insertCount DO
+        INSERT INTO admin(username, `password`) VALUES(CONCAT('Rose', i), '666');
+        SET i = i + 1;
+    END WHILE;
+END $
+
+CALL pro_while1(100)$
+SELECT * FROM admin;$
+
+
+-- 添加 leave 语句
+-- 批量插入, 根据次数插入到 admin 表中多条记录, 如果次数 >20 则停止
+CREATE PROCEDURE test_while2(IN insertCount INT)
+BEGIN
+    DECLARE i INT DEFAULT 1;
+    a:WHILE i <= insertCount DO
+        INSERT INTO admin(username, `password`) VALUES(CONCAT('xiaohua',i),'0000');
+        IF i >= 20 THEN LEAVE a;
+        END IF;
+        SET i = i + 1;
+    END WHILE a;
+END $
+
+CALL test_while2(30) $
+SELECT * FROM admin; $
+
+
+-- 添加 iterate 语句
+-- 批量插入, 根据次数插入到 admin 表中多条记录, 只插入偶数次
+CREATE PROCEDURE test_while3(IN insertCount INT)
+BEGIN
+    DECLARE i INT DEFAULT 0;
+    a:WHILE i <= insertCount DO
+        SET i = i + 1;
+        IF MOD(i, 2) != 0 THEN ITERATE a;
+        END IF;
+        INSERT INTO admin(username, `password`) VALUES(CONCAT('xiaohua', i), '0000');
+    END WHILE a;
+END $
+
+CALL test_while3(10) $
+SELECT * FROM admin; $
+
+
+-- 已知表 stringcontent, 向该表插入指定个数的随机的字符串
+-- 其中字段: id 自增长 ; content varchar(20)
+CREATE TABLE stringcontent(
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    content VARCHAR(20)
+);
+
+CREATE PROCEDURE test_randstr_insert(IN insertCount INT) 
+BEGIN 
+    DECLARE i INT DEFAULT 1;
+    DECLARE `str` VARCHAR(26) DEFAULT 'abcdefghijklmnopqrstuvwxyz';
+    DECLARE startIndex INT DEFAULT 1;  -- 代表初始索引
+    DECLARE `len` INT DEFAULT 1;  -- 代表截取的字符长度
+    WHILE i <= insertcount DO
+        SET startIndex = FLOOR(RAND() * 26 + 1);  -- 代表初始索引, 随机范围 1 到 26
+        SET `len` = FLOOR(RAND() * (20 - startIndex + 1) + 1);  -- 代表截取长度, 随机范围 1 到 (20 - startIndex + 1), 20 为限制长度 `content VARCHAR(20)`
+        INSERT INTO stringcontent(content) VALUES(SUBSTR(`str`, startIndex, `len`));
+        SET i = i + 1;
+    END WHILE;
+END $
+
+CALL test_randstr_insert(10)$
+SELECT * FROM stringcontent;
